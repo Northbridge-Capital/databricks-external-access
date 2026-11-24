@@ -13,7 +13,8 @@ just lint   # ruff, ruff format, basedpyright
 just test   # pytest with coverage
 ```
 
-CI runs the same checks on every pull request: lint and types, the tests on Linux, macOS and
+CI runs the same checks on every pull request (the aggregate `ci-required` job passes only when all
+of them do, and is the single check meant for branch protection): lint and types, the tests on Linux, macOS and
 Windows with Python 3.11 and 3.13, the tests against the **lowest** dependency versions that
 `pyproject.toml` allows, and a build check (`twine check`, clean-environment import).
 
