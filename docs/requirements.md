@@ -30,7 +30,8 @@ as Parquet, without Databricks compute and without shared secrets.
 | N3 | Two runtime dependencies only: `databricks-sdk` and `duckdb`. A third needs a strong case. | Review (`pyproject.toml`) |
 | N4 | Never print or log credentials. | `test_fetch_writes_the_logical_table` |
 | N5 | The package builds, renders on PyPI and imports from a clean environment; it is typed. | CI `build` (`twine check --strict`) |
-| N6 | 85% or more test coverage. | CI `test` |
+| N6 | 95% or more test coverage; warnings in tests are errors. | CI `test`, `filterwarnings = error` |
+| N7 | Source passes strict type checking; workflows pass `actionlint` and `zizmor`; actions are pinned to commit SHAs; the tutorial notebook is committed without outputs. | CI `lint`, `tests/test_notebook.py` |
 
 ## Environment and constraints
 

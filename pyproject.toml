@@ -66,6 +66,7 @@ line-ending = "lf"
 
 [tool.pytest.ini_options]
 addopts = "-q"
+filterwarnings = ["error"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
@@ -75,4 +76,5 @@ branch = true
 [tool.basedpyright]
 include = ["src", "tests"]
 typeCheckingMode = "standard"
+strict = ["src"]
 reportMissingTypeStubs = false

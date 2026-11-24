@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+# `_workspace` is this package's private module; it is called as an attribute so tests can patch it.
+# pyright: reportPrivateUsage=false
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -42,11 +44,13 @@ class Table:
 
 
 def catalogs() -> list[Entry]:
+    """The catalogs you can see."""
     with explain("listing catalogs"):
         return [Entry(str(c.name), c.comment) for c in _workspace.client().catalogs.list()]
 
 
 def schemas(catalog: str) -> list[Entry]:
+    """The schemas of one catalog, named `catalog.schema`."""
     with explain(f"listing schemas in {catalog}"):
         found = _workspace.client().schemas.list(catalog)
         return [Entry(str(s.full_name), s.comment) for s in found]

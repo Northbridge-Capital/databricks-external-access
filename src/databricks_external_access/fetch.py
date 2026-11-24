@@ -7,6 +7,8 @@ writes the result as Parquet, which every dataframe framework can load.
 
 from __future__ import annotations
 
+# `_workspace` is this package's private module; it is called as an attribute so tests can patch it.
+# pyright: reportPrivateUsage=false
 import os
 import sys
 import tempfile

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import cache
 from pathlib import Path
@@ -72,7 +72,7 @@ def table_info(name: str) -> TableInfo:
 
 
 @contextmanager
-def explain(action: str) -> Iterator[None]:
+def explain(action: str) -> Generator[None]:
     """Turn the Databricks failures people actually hit into actionable errors."""
     try:
         yield
