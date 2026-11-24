@@ -18,4 +18,7 @@ First release.
   its size on storage first. Reads Lakeflow pipeline tables (`deletionVectors`,
   `v2Checkpoint`, `columnMapping`) through temporary table credentials and DuckDB.
 - `login()` to save the workspace once and sign in through the browser (SSO).
-- Actionable errors for missing sign-in, missing grants, unsupported tables and unknown tables.
+- Actionable, catchable errors: `NotSignedIn`, `AccessDenied`, `NotFound` and `UnsupportedTable`,
+  all subclasses of `Error`.
+- `__version__`.
+- Requirements and design documentation (`docs/`).

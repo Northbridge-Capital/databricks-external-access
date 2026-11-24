@@ -36,6 +36,16 @@ def test_fetch_writes_the_logical_table(
     assert SECRET not in output.out + output.err
 
 
+def test_output_is_named_after_the_canonical_table_name(
+    workspace: SimpleNamespace, delta_table: Path, tmp_path: Path
+):
+    serve(workspace, table_info(name="dev.silver.prices"), delta_table)
+
+    path = dc.fetch("`dev`.`silver`.`PRICES`", dest=tmp_path / "out")
+
+    assert path.name == "dev.silver.prices.parquet"  # not the caller's spelling, never a path
+
+
 def test_fetch_slice(workspace: SimpleNamespace, delta_table: Path, tmp_path: Path):
     serve(workspace, table_info(), delta_table)
 
@@ -104,7 +114,7 @@ def test_unsupported_tables_are_rejected_before_asking_for_credentials(
 ):
     workspace.tables.get = lambda _name: table_info(kind=kind, fmt=fmt)
 
-    with pytest.raises(dc.Error, match="cannot be fetched"):
+    with pytest.raises(dc.UnsupportedTable, match="cannot be fetched"):
         dc.fetch("dev.silver.prices", dest=tmp_path)
 
 
@@ -114,7 +124,7 @@ def test_pipeline_table_without_external_metadata(workspace: SimpleNamespace, tm
         BadRequest("Request URL is required for table type STREAMING_TABLE.")
     )
 
-    with pytest.raises(dc.Error, match="pipelines.externalMetadata.enabled=true"):
+    with pytest.raises(dc.UnsupportedTable, match=r"pipelines\.externalMetadata\.enabled=true"):
         dc.fetch("dev.silver.prices", dest=tmp_path)
 
 
@@ -124,7 +134,7 @@ def test_missing_grant(workspace: SimpleNamespace, tmp_path: Path):
         PermissionDenied("Principal 'x' does not have EXTERNAL USE SCHEMA on Schema 'dev.silver'.")
     )
 
-    with pytest.raises(dc.Error, match="EXTERNAL USE SCHEMA"):
+    with pytest.raises(dc.AccessDenied, match="EXTERNAL USE SCHEMA"):
         dc.fetch("dev.silver.prices", dest=tmp_path)
 
 
@@ -136,7 +146,7 @@ def test_non_aws_credentials(workspace: SimpleNamespace, tmp_path: Path):
         GenerateTemporaryTableCredentialResponse(url="s3://x", aws_temp_credentials=None)
     )
 
-    with pytest.raises(dc.Error, match="no AWS read credentials"):
+    with pytest.raises(dc.UnsupportedTable, match="only AWS"):
         dc.fetch("dev.silver.prices", dest=tmp_path)
 
 

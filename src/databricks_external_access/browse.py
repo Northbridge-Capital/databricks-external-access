@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from databricks.sdk.service.catalog import TableInfo
 
 from . import _workspace
-from ._workspace import Error, explain, table_info
+from ._workspace import explain, table_info
+from .errors import Error
 
 # Databricks-managed catalogs that `overview()` skips unless asked for by name.
 _MANAGED = {"system", "samples"}

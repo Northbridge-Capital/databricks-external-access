@@ -43,32 +43,34 @@ def test_tables_and_describe_include_columns(workspace: SimpleNamespace):
 
 
 def test_tables_requires_catalog_and_schema(workspace: SimpleNamespace):
-    with pytest.raises(dc.Error, match="catalog.schema"):
+    with pytest.raises(dc.Error, match=r"catalog\.schema"):
         dc.tables("dev")
 
 
 @pytest.mark.parametrize(
-    ("failure", "expected"),
+    ("failure", "error", "expected"),
     [
-        (Unauthenticated("token invalid"), "databricks-sdk-py/oauth"),
-        (PermissionDenied("no access"), "EXTERNAL USE SCHEMA"),
-        (NotFound("gone"), "cannot see"),
+        (Unauthenticated("token invalid"), dc.NotSignedIn, "databricks-sdk-py/oauth"),
+        (PermissionDenied("no access"), dc.AccessDenied, "EXTERNAL USE SCHEMA"),
+        (NotFound("gone"), dc.NotFound, "cannot see"),
     ],
 )
 def test_databricks_failures_become_actionable_errors(
-    workspace: SimpleNamespace, failure: Exception, expected: str
+    workspace: SimpleNamespace, failure: Exception, error: type[dc.Error], expected: str
 ):
     workspace.catalogs.list = raises(failure)
 
-    with pytest.raises(dc.Error, match=expected):
+    with pytest.raises(error, match=expected) as raised:
         dc.catalogs()
+
+    assert isinstance(raised.value, dc.Error)
 
 
 def test_error_drops_sdk_config_diagnostics(workspace: SimpleNamespace):
     failure = PermissionDenied("No SELECT on dev.x. Config: host=https://h, account_id=a")
     workspace.catalogs.list = raises(failure)
 
-    with pytest.raises(dc.Error) as error:
+    with pytest.raises(dc.AccessDenied) as error:
         dc.catalogs()
 
     assert "No SELECT on dev.x." in str(error.value)
@@ -96,6 +98,14 @@ def test_login_saves_the_workspace_and_signs_in(saved_host: Path, monkeypatch: p
     assert saved_host.read_text() == "https://dbc-1.cloud.databricks.com\n"
     _workspace.client.cache_clear()
     assert _workspace._host() == "https://dbc-1.cloud.databricks.com"
+
+
+@pytest.mark.parametrize("host", ["http://dbc-1.cloud.databricks.com", "ftp://x"])
+def test_workspace_url_must_use_https(saved_host: Path, host: str):
+    with pytest.raises(dc.Error, match="https://"):
+        dc.login(host)
+
+    assert not saved_host.exists()
 
 
 def test_failed_login_keeps_the_previous_workspace(
@@ -146,7 +156,8 @@ def test_overview_prints_a_tree_without_managed_catalogs(
     out = capsys.readouterr().out.splitlines()
     assert out[0] == "dev"
     assert out[1] == "  silver  (2 tables)"
-    assert out[2].startswith("    prices") and "STREAMING_TABLE" in out[2]
+    assert out[2].startswith("    prices")
+    assert "STREAMING_TABLE" in out[2]
     assert "dev.silver.prices comment" in out[2]
     assert out[4:6] == ["ops", "  silver  (2 tables)"]
     assert len(out) == 8  # no system, samples or information_schema

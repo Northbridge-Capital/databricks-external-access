@@ -19,12 +19,19 @@ Windows with Python 3.11 and 3.13, the tests against the **lowest** dependency v
 
 ### The integration test
 
-`tests/test_integration.py` reads a real table from a real workspace. It runs when
-`DATABRICKS_TEST_TABLE` (`catalog.schema.table`, ideally a Lakeflow pipeline table) is set and
-you have run `databricks_external_access.login(...)` before, and skips itself otherwise,
-including in CI, which has no sign-in. Run it before changing anything in `fetch.py` and when
+`tests/test_integration.py` reads real tables from a real workspace. It runs when
+`DATABRICKS_TEST_TABLES` (comma-separated `catalog.schema.table`; include a Lakeflow streaming
+table written by `apply_changes` and a materialized view) is set and you have run
+`databricks_external_access.login(...)` before, and skips itself otherwise, including in CI,
+which has no sign-in. Run it before changing anything in `fetch.py` and when
 bumping `duckdb` or `databricks-sdk`: it is what catches a client no longer reading Lakeflow
 tables.
+
+## Where things are
+
+- [docs/requirements.md](docs/requirements.md): what the project must do and the conditions it
+  works under. A change that alters a requirement updates it in the same pull request.
+- [docs/design.md](docs/design.md): how it works, the module map, decisions, and where to extend.
 
 ## Design rules
 
@@ -54,7 +61,10 @@ reuse a version.
 1. In a pull request, bump `version` in `pyproject.toml`, run `uv lock` (CI uses `--locked`),
    and in `CHANGELOG.md` move the `[Unreleased]` entries under the new version with its date.
    Merge it.
-2. A maintainer tags the merge commit and pushes the tag:
+2. Dry-run the release: Actions > **Release** > Run workflow, on `main`. It performs the same
+   checks and build as a real release but publishes nothing. Fix anything it reports; tags
+   cannot be undone, so do not skip this.
+3. A maintainer tags the merge commit and pushes the tag:
 
    ```bash
    git switch main && git pull
@@ -62,10 +72,10 @@ reuse a version.
    git push origin vX.Y.Z
    ```
 
-3. The `Release` workflow checks that the tag is on `main` and equals the `pyproject.toml`
+4. The `Release` workflow checks that the tag is on `main` and equals the `pyproject.toml`
    version, builds the package, and creates the GitHub Release with generated notes and the
    wheel and sdist attached.
-4. Consumers bump their pin to the new tag.
+5. Consumers bump their pin to the new tag.
 
 ### Publishing to PyPI (planned, not wired up yet)
 
