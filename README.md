@@ -105,8 +105,9 @@ libraries, `databricks-sdk` and `duckdb`.
 **How a fetch works.** The SDK asks Unity Catalog for short-lived, read-only AWS
 credentials for the table (`temporary-table-credentials`, which returns the table's S3
 path), DuckDB's Delta extension reads the Delta files from that path, and DuckDB writes
-the result as Parquet. Verified on a Lakeflow streaming table of 10,825,000 rows with
-duckdb 2.0.1, databricks-sdk 0.169 and Python 3.13, on an AWS workspace.
+the result as Parquet. Verified live on an AWS workspace (duckdb 2.0.1, databricks-sdk 0.169,
+Python 3.13) against Lakeflow streaming tables written by `apply_changes` and Lakeflow
+materialized views, the largest with 10,825,000 rows.
 
 - **Engine: DuckDB.** One dependency does everything: it reads the Delta log, including
   the `deletionVectors`, `v2Checkpoint` and `columnMapping` features of Lakeflow tables;
@@ -135,13 +136,19 @@ duckdb 2.0.1, databricks-sdk 0.169 and Python 3.13, on an AWS workspace.
 
 ### Trade-offs to know about
 
-- **Pipeline bookkeeping columns.** Tables written by pipeline `apply_changes` store
-  extra columns (`__DeleteVersion`, `__MEETS_DROP_EXPECTATIONS`, ...) in their files, and
-  Unity Catalog defines the logical table by dropping deleted and expectation-failing rows
-  (its `spark.internal.streaming_table.reconciliation_query` property). `fetch` applies
-  those two row filters when it sees the columns and returns only the columns Unity
-  Catalog declares. This relies on an internal Databricks convention, which is why the
-  integration test checks the fetched columns against the declared ones.
+- **Pipeline bookkeeping columns.** Lakeflow stores extra columns in a table's files that
+  the logical table hides: streaming tables written by `apply_changes` keep
+  `__DeleteVersion`, `__MEETS_DROP_EXPECTATIONS` and others, and some materialized views keep
+  helper columns such as `__DECOMP_GENERATED_count_0`. `fetch` returns only the columns Unity
+  Catalog declares. For `apply_changes` tables Unity Catalog also defines the logical table by
+  dropping deleted and expectation-failing rows (its
+  `spark.internal.streaming_table.reconciliation_query` property); `fetch` applies those two
+  row filters when it sees the columns. This relies on an internal Databricks convention,
+  which is why the integration test checks the fetched columns against the declared ones.
+- **Not yet verified against a real workspace:** managed and external Delta tables (expected to
+  work; covered only by tests on a local Delta table), and the `apply_changes` row filter on
+  tables that actually contain deleted or expectation-failing rows (every table checked so
+  far had none; it is covered by a unit test on a synthetic table).
 - **Read credentials expire after at most an hour.** A transfer that outlives them fails
   with an S3 access error; fetch a smaller slice.
 - **Pipeline tables only work once their pipeline enables
