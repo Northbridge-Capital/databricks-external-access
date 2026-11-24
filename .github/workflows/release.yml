@@ -29,15 +29,25 @@ jobs:
 
       - name: Check the tag is on main and matches the package version
         run: |
-          version="v$(uv version --short --frozen)"
-          if [ "$GITHUB_REF_TYPE" != tag ]; then
-            echo "Dry run on $GITHUB_REF_NAME: would release $version"
-            exit 0
+          version="$(uv version --short --frozen)"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+              || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+            [ "v$version" = "$GITHUB_REF_NAME" ] \
+              || { echo "::error::tag $GITHUB_REF_NAME does not match pyproject version v$version"; exit 1; }
+          else
+            echo "Dry run on $GITHUB_REF_NAME: would release v$version"
           fi
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
-            || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
-          [ "$version" = "$GITHUB_REF_NAME" ] \
-            || { echo "::error::tag $GITHUB_REF_NAME does not match pyproject version $version"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      # The release notes are this version's section of CHANGELOG.md, so the changelog stays the
+      # single source of truth and a release cannot go out without one.
+      - name: Extract the release notes from CHANGELOG.md
+        run: |
+          awk -v v="$VERSION" '/^## \[/ { in_section = index($0, "[" v "]") > 0; next } in_section' \
+            CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "::error::CHANGELOG.md has no section for $VERSION"; exit 1; }
+          cat notes.md
 
       - run: uv build
       - run: uvx twine check --strict dist/*
@@ -46,4 +56,4 @@ jobs:
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md

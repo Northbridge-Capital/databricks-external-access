@@ -74,8 +74,9 @@ reuse a version.
    ```
 
 4. The `Release` workflow checks that the tag is on `main` and equals the `pyproject.toml`
-   version, builds the package, and creates the GitHub Release with generated notes and the
-   wheel and sdist attached.
+   version, builds the package, and creates the GitHub Release with that version's `CHANGELOG.md` section
+   as the notes and the wheel and sdist attached. It fails if the changelog has no section for
+   the version.
 5. Consumers bump their pin to the new tag.
 
 ### Publishing to PyPI (planned, not wired up yet)
