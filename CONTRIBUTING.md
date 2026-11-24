@@ -1,5 +1,8 @@
 # Contributing
 
+Thanks for helping. Bug reports, fixes, docs and features are all welcome; for anything
+larger than a small fix, please open an issue first so we can agree on the approach.
+
 ## Setup and checks
 
 Requires [uv](https://docs.astral.sh/uv/) and [just](https://github.com/casey/just).
@@ -10,25 +13,48 @@ just lint   # ruff, ruff format, basedpyright
 just test   # pytest with coverage
 ```
 
-CI runs the same checks on every PR and push to `main`, and the tests on Linux, macOS and
-Windows with Python 3.11 and 3.13. The integration test reads a real table from your
-workspace; it runs when `DATABRICKS_TEST_TABLE` (`catalog.schema.table`, ideally a Lakeflow pipeline
-table) is set and you have run `databricks_external_access.login(...)` before, and skips
-itself otherwise, including in CI.
-Run it before changing anything in `fetch.py`, and after bumping `duckdb` or
-`databricks-sdk`: it is what catches a client no longer reading Lakeflow tables.
+CI runs the same checks on every pull request: lint and types, the tests on Linux, macOS and
+Windows with Python 3.11 and 3.13, the tests against the **lowest** dependency versions that
+`pyproject.toml` allows, and a build check (`twine check`, clean-environment import).
 
-Branch off `main` (`feature/…`, `fix/…`, `docs/…`, `chore/…`), open a PR, and keep README,
-docstrings and comments correct in the same PR.
+### The integration test
+
+`tests/test_integration.py` reads a real table from a real workspace. It runs when
+`DATABRICKS_TEST_TABLE` (`catalog.schema.table`, ideally a Lakeflow pipeline table) is set and
+you have run `databricks_external_access.login(...)` before, and skips itself otherwise,
+including in CI, which has no sign-in. Run it before changing anything in `fetch.py` and when
+bumping `duckdb` or `databricks-sdk`: it is what catches a client no longer reading Lakeflow
+tables.
+
+## Design rules
+
+- **Lean.** The package has two runtime dependencies (`databricks-sdk`, `duckdb`); adding a
+  third needs a strong case. Delete rather than deprecate, and no options kept "just in case".
+- **One source of truth.** No logic or constant maintained in two places.
+- **Docs move with the code.** README, docstrings, comments and `CHANGELOG.md` (under
+  `[Unreleased]`) must be correct in the same pull request.
+- **Never print or log credentials.**
+
+## Pull requests
+
+1. Fork the repository (or branch, if you are a maintainer) and branch off `main` using
+   `feature/…`, `fix/…`, `docs/…` or `chore/…`.
+2. Open a pull request against `main`. Branches are merged by **squash**, so the pull request
+   title becomes the commit message: make it a short imperative summary.
+3. A code owner must approve before merging (`.github/CODEOWNERS`); other reviews are welcome
+   but do not satisfy the merge rule. An author cannot approve their own pull request, so a
+   code owner should not open the pull request they are meant to approve.
 
 ## Releasing
 
-Releases are tags on `main`; consumers pin them. Versions follow SemVer (while `0.x`, a
-breaking API change bumps the minor version).
+Releases are tags on `main`; consumers pin a tag. Tags matching `v*` are protected: they
+cannot be moved or deleted except by organisation admins, so check before you tag, and never
+reuse a version.
 
-1. In a PR, bump `version` in `pyproject.toml` and run `uv lock` (CI uses `--locked`).
-   Merge it to `main`.
-2. Tag the merge commit and push the tag:
+1. In a pull request, bump `version` in `pyproject.toml`, run `uv lock` (CI uses `--locked`),
+   and in `CHANGELOG.md` move the `[Unreleased]` entries under the new version with its date.
+   Merge it.
+2. A maintainer tags the merge commit and pushes the tag:
 
    ```bash
    git switch main && git pull
@@ -37,9 +63,22 @@ breaking API change bumps the minor version).
    ```
 
 3. The `Release` workflow checks that the tag is on `main` and equals the `pyproject.toml`
-   version, builds the package, and creates the GitHub Release with generated notes and the wheel and
-   sdist attached.
+   version, builds the package, and creates the GitHub Release with generated notes and the
+   wheel and sdist attached.
 4. Consumers bump their pin to the new tag.
 
-Never move or delete a published tag; cut a new version instead. Consider a repository
-rule restricting who can create `v*` tags.
+### Publishing to PyPI (planned, not wired up yet)
+
+The package is already PyPI-ready: `pyproject.toml` carries full metadata, CI runs
+`twine check --strict`, and the wheel ships `py.typed`. Publishing needs repository settings
+that live in the infrastructure repo's Terraform, so it is a request to that repo, not a
+change here:
+
+1. Register the project name on PyPI and add a **trusted publisher** for this repository,
+   workflow `release.yml`, environment `pypi`. This uses GitHub's OIDC identity, so **no
+   token or secret is stored anywhere**.
+2. Ask for a GitHub environment named `pypi` (ideally with a required reviewer).
+3. Add a publish job to `release.yml` that downloads the built distributions and uploads them
+   with `pypa/gh-action-pypi-publish` and `id-token: write`. Dry-run it against TestPyPI first.
+
+Until then, install from the git tag as described in the README.

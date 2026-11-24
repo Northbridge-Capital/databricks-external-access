@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHONDONTWRITEBYTECODE: 1
 
@@ -45,3 +52,31 @@ jobs:
 
       - run: uv sync --locked
       - run: uv run pytest --cov --cov-fail-under=85
+
+  # The lower bounds in pyproject.toml must actually work, not just the locked versions.
+  test-lowest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.11.26" # keep in sync with release.yml
+          enable-cache: true
+          python-version: "3.11"
+
+      - run: uv run --isolated --resolution lowest-direct --group dev pytest
+
+  # The built package must be valid, render on PyPI, and import from a clean environment.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.11.26" # keep in sync with release.yml
+
+      - run: uv build
+      - run: uvx twine check --strict dist/*
+      - run: uv run --isolated --no-project --with dist/*.whl python -c "import databricks_external_access"

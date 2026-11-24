@@ -1,5 +1,7 @@
 # databricks-external-access
 
+[![CI](https://github.com/Northbridge-Capital/databricks-external-access/actions/workflows/ci.yml/badge.svg)](https://github.com/Northbridge-Capital/databricks-external-access/actions/workflows/ci.yml)
+
 Browse the catalogs, schemas and tables of a Databricks workspace (Unity Catalog) and fetch
 tables to your own machine as Parquet, with no Databricks compute and no secrets. Sign in
 once through your workspace's SSO; everything else is a few function calls.
@@ -26,7 +28,11 @@ import polars as pl  # or pandas, DuckDB, Spark, ...
 df = pl.read_parquet(path)
 ```
 
-New here? Open the [tutorial notebook](notebooks/tutorial.ipynb) (`uv run --group notebook jupyter lab`).
+New here? Open the [tutorial notebook](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/notebooks/tutorial.ipynb) (`uv run --group notebook jupyter lab`).
+
+**Status: alpha (`0.x`).** The API may change between minor versions; see the
+[changelog](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/CHANGELOG.md).
+It is installed from git tags for now; publishing to PyPI is planned.
 
 ## Setup (per person)
 
@@ -34,8 +40,8 @@ New here? Open the [tutorial notebook](notebooks/tutorial.ipynb) (`uv run --grou
    latest tag):
 
    ```bash
-   uv add "databricks-external-access @ git+https://github.com/<owner>/databricks-external-access@v0.1.0"
-   # or: pip install "databricks-external-access @ git+https://github.com/<owner>/databricks-external-access@v0.1.0"
+   uv add "databricks-external-access @ git+https://github.com/Northbridge-Capital/databricks-external-access@v0.1.0"
+   # or: pip install "databricks-external-access @ git+https://github.com/Northbridge-Capital/databricks-external-access@v0.1.0"
    ```
 
 2. Once per machine, point it at your workspace and sign in:
@@ -153,8 +159,8 @@ a function there; nothing here has to change.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/LICENSE).
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md): setup, checks, and the release process.
+See [CONTRIBUTING.md](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/CONTRIBUTING.md): setup, checks, and the release process.

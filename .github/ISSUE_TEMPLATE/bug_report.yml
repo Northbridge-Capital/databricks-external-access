@@ -1,0 +1,38 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: Include the full error message. Never paste tokens, credentials or private data.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal code to reproduce
+      render: python
+    validations:
+      required: true
+  - type: dropdown
+    id: table-kind
+    attributes:
+      label: Kind of table involved
+      options:
+        - Not table-specific (browsing, sign-in)
+        - Streaming table (Lakeflow)
+        - Materialized view (Lakeflow)
+        - Managed Delta table
+        - External Delta table
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions and platform
+      description: "Output of: python -c \"import sys, duckdb, databricks.sdk as s; print(sys.version, duckdb.__version__, s.version.__version__)\" plus your OS and cloud (AWS/Azure/GCP)."
+    validations:
+      required: true

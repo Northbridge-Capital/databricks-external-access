@@ -10,15 +10,30 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
+authors = [{ name = "Northbridge Capital" }]
 keywords = ["databricks", "unity-catalog", "delta-lake", "duckdb", "parquet"]
 classifiers = [
-  "Programming Language :: Python :: 3",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
   "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Typing :: Typed",
 ]
 dependencies = [
   "databricks-sdk>=0.169",
   "duckdb>=2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Northbridge-Capital/databricks-external-access"
+Source = "https://github.com/Northbridge-Capital/databricks-external-access"
+Issues = "https://github.com/Northbridge-Capital/databricks-external-access/issues"
+Changelog = "https://github.com/Northbridge-Capital/databricks-external-access/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
