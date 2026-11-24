@@ -83,14 +83,16 @@ jobs:
 
   # The one check branch protection requires (see the infrastructure repo). It has a stable name
   # so changing the jobs or the test matrix above never needs an infrastructure change.
-  # `always()` makes it report even when a job failed or was cancelled, and it fails unless
-  # every job succeeded.
+  # `always()` makes it report even when a job failed or was cancelled; it then fails unless
+  # EVERY job's result is exactly `success` (anything else, including skipped or cancelled, fails).
   ci-required:
     if: always()
     needs: [lint, test, test-lowest, build]
     runs-on: ubuntu-latest
+    env:
+      RESULTS: ${{ join(needs.*.result, ' ') }}
     steps:
       - name: Fail unless every CI job succeeded
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
-        run: exit 1
-      - run: echo "All CI jobs succeeded"
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do [ "$result" = success ] || exit 1; done
