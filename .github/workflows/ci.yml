@@ -65,11 +65,10 @@ jobs:
           enable-cache: true
           python-version: "3.11"
 
-      - run: uv run --isolated --resolution lowest-direct --group dev pytest
+      - run: exit 1
 
   # The built package must be valid, render on PyPI, and import from a clean environment.
   build:
-    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
