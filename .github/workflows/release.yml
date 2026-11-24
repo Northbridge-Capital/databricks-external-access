@@ -1,17 +1,22 @@
 name: Release
 
-# Pushing a tag `vX.Y.Z` from main publishes a GitHub Release. See CONTRIBUTING.md.
+# Pushing a tag `vX.Y.Z` from main publishes a GitHub Release (see CONTRIBUTING.md).
+# Run it by hand (Actions > Release > Run workflow) for a dry run: the same checks and build,
+# without publishing anything. Do that before tagging, because release tags cannot be undone.
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub Release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -23,15 +28,21 @@ jobs:
 
       - name: Check the tag is on main and matches the package version
         run: |
+          version="v$(uv version --short --frozen)"
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            echo "Dry run on $GITHUB_REF_NAME: would release $version"
+            exit 0
+          fi
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
             || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
-          version="v$(uv version --short --frozen)"
           [ "$version" = "$GITHUB_REF_NAME" ] \
             || { echo "::error::tag $GITHUB_REF_NAME does not match pyproject version $version"; exit 1; }
 
       - run: uv build
+      - run: uvx twine check --strict dist/*
 
       - name: Create the release
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes

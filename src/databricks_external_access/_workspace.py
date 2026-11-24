@@ -9,17 +9,15 @@ from functools import cache
 from pathlib import Path
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.errors import NotFound, PermissionDenied, Unauthenticated
+from databricks.sdk import errors as sdk
 from databricks.sdk.service.catalog import TableInfo
+
+from .errors import AccessDenied, Error, NotFound, NotSignedIn
 
 # Where `login` remembers the workspace URL.
 SAVED_HOST = "~/.config/databricks-external-access/host"
 # Where the SDK caches the OAuth tokens of the browser sign-in.
 TOKEN_CACHE = "~/.config/databricks-sdk-py/oauth"
-
-
-class Error(Exception):
-    """A failure the caller can act on; the message says how."""
 
 
 def login(host: str) -> None:
@@ -50,7 +48,11 @@ def _host() -> str:
 
 def _normalize(host: str) -> str:
     host = host.strip().rstrip("/")
-    return host if "://" in host else f"https://{host}"
+    if "://" not in host:
+        host = f"https://{host}"
+    if not host.startswith("https://"):
+        raise Error(f"The workspace URL must use https://, got {host!r}.")
+    return host
 
 
 @cache
@@ -74,20 +76,20 @@ def explain(action: str) -> Iterator[None]:
     """Turn the Databricks failures people actually hit into actionable errors."""
     try:
         yield
-    except Unauthenticated as e:
-        raise Error(
+    except sdk.Unauthenticated as e:
+        raise NotSignedIn(
             f"Databricks rejected your sign-in while {action}. Delete the cached tokens in "
             f"{TOKEN_CACHE} and retry; a browser window opens to sign in through your "
             "workspace's SSO."
         ) from e
-    except PermissionDenied as e:
-        raise Error(
+    except sdk.PermissionDenied as e:
+        raise AccessDenied(
             f"Access denied while {action}: {_message(e)} Reading a table from outside "
             "Databricks needs SELECT on the table and EXTERNAL USE SCHEMA on its schema; "
             "ask your Databricks admin for the missing grant."
         ) from e
-    except NotFound as e:
-        raise Error(
+    except sdk.NotFound as e:
+        raise NotFound(
             f"Not found while {action}: {_message(e)} Unity Catalog also reports objects "
             "you cannot see as missing."
         ) from e

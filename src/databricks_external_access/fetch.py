@@ -7,22 +7,25 @@ writes the result as Parquet, which every dataframe framework can load.
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
 import duckdb
 from databricks.sdk.errors import BadRequest
 from databricks.sdk.service.catalog import (
+    AwsCredentials,
     DataSourceFormat,
-    GenerateTemporaryTableCredentialResponse,
     TableInfo,
     TableOperation,
     TableType,
 )
 
 from . import _workspace
-from ._workspace import Error, explain, table_info
+from ._workspace import explain, table_info
+from .errors import UnsupportedTable
 
 # Unity Catalog can vend credentials only for these; views, foreign and shared
 # (DELTASHARING) tables have no storage path to read. Pipeline tables report no format.
@@ -62,96 +65,120 @@ def fetch(
             machine with your own credentials, so it is not sanitised.
         limit: Maximum number of rows.
         dest: Directory to write into; created if missing.
+
+    Raises:
+        UnsupportedTable: The table cannot be read from outside Databricks.
+        AccessDenied: You lack `SELECT` on the table or `EXTERNAL USE SCHEMA` on its schema.
+        NotFound: The table does not exist, or you cannot see it.
+        NotSignedIn: Databricks rejected your sign-in.
     """
     info = table_info(name)
     _require_readable(info)
-    credentials = _credentials(info)
-    aws = credentials.aws_temp_credentials
-    if aws is None or credentials.url is None:
-        raise Error(f"Databricks returned no AWS read credentials for {name}.")
-    with explain(f"reading the metastore region for {name}"):
-        region = _workspace.client().metastores.summary().region
-
-    with duckdb.connect() as con:
-        con.execute("INSTALL delta; LOAD delta; INSTALL httpfs; LOAD httpfs")
-        con.execute(
-            "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, SESSION_TOKEN ?, REGION ?, SCOPE ?)",
-            [aws.access_key_id, aws.secret_access_key, aws.session_token, region, credentials.url],
-        )
-        files, size = _storage_size(con, credentials.url)
-        print(
-            f"{name}: {files} Parquet files, {_human(size)} on storage "
-            "(whole table; a slice reads less). Fetching...",
-            file=sys.stderr,
-            flush=True,
-        )
-
-        physical = {
-            row[0] for row in con.execute(_scan("DESCRIBE SELECT *"), [credentials.url]).fetchall()
-        }
+    url, aws = _credentials(info)
+    full_name = str(info.full_name)
+    with _connect(url, aws, _region(full_name)) as con:
+        _announce_size(con, full_name, url)
         keep = columns if columns is not None else [str(c.name) for c in info.columns or []]
-        predicates = [f for col, f in _BOOKKEEPING_FILTERS.items() if col in physical]
-        if where:
-            predicates.append(f"({where})")
-        query = _scan(f"SELECT {', '.join(_quote(c) for c in keep)}")
-        if predicates:
-            query += f" WHERE {' AND '.join(predicates)}"
-        if limit is not None:
-            query += f" LIMIT {int(limit)}"
-
-        directory = Path(dest)
-        directory.mkdir(parents=True, exist_ok=True)
-        target = directory / f"{name}.parquet"
-        partial = target.with_name(target.name + ".part")
-        try:
-            con.execute(
-                f"COPY ({query}) TO ? (FORMAT parquet, COMPRESSION zstd)",
-                [credentials.url, str(partial)],
-            )
-            partial.replace(target)
-        finally:
-            partial.unlink(missing_ok=True)
-    return target
+        query = _select(con, url, keep, where, limit)
+        return _write(con, query, url, Path(dest) / f"{full_name}.parquet")
 
 
 def _require_readable(info: TableInfo) -> None:
     if info.table_type not in _READABLE_KINDS or info.data_source_format not in _READABLE_FORMATS:
         kind = info.table_type.value if info.table_type else "unknown"
         fmt = info.data_source_format.value if info.data_source_format else "none"
-        raise Error(
+        raise UnsupportedTable(
             f"{info.full_name} cannot be fetched: it is a {kind} table in {fmt} format, and only "
             "Delta tables, streaming tables and materialized views can be read from outside "
             "Databricks."
         )
 
 
-def _credentials(info: TableInfo) -> GenerateTemporaryTableCredentialResponse:
+def _credentials(info: TableInfo) -> tuple[str, AwsCredentials]:
+    """The table's storage path and short-lived read credentials for it."""
     with explain(f"requesting read credentials for {info.full_name}"):
         try:
             api = _workspace.client().temporary_table_credentials
-            return api.generate_temporary_table_credentials(
+            vended = api.generate_temporary_table_credentials(
                 table_id=info.table_id, operation=TableOperation.READ
             )
         except BadRequest as e:
-            raise Error(
+            raise UnsupportedTable(
                 f"{info.full_name} cannot be read from outside Databricks: {e} For pipeline "
                 "tables, the owning pipeline must set pipelines.externalMetadata.enabled=true "
                 "and run an update."
             ) from e
+    if vended.aws_temp_credentials is None or vended.url is None:
+        raise UnsupportedTable(
+            f"Databricks returned no AWS read credentials for {info.full_name}; only AWS "
+            "workspaces are supported."
+        )
+    return vended.url, vended.aws_temp_credentials
 
 
-def _storage_size(con: duckdb.DuckDBPyConnection, url: str) -> tuple[int, int]:
-    """Number and total bytes of the Parquet files in the table's current Delta snapshot."""
+def _region(full_name: str) -> str:
+    with explain(f"reading the metastore region for {full_name}"):
+        return str(_workspace.client().metastores.summary().region)
+
+
+def _connect(url: str, aws: AwsCredentials, region: str) -> duckdb.DuckDBPyConnection:
+    """An in-memory DuckDB that can read `url` with the given credentials."""
+    con = duckdb.connect()
+    con.execute("INSTALL delta; LOAD delta; INSTALL httpfs; LOAD httpfs")
+    con.execute(
+        "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, SESSION_TOKEN ?, REGION ?, SCOPE ?)",
+        [aws.access_key_id, aws.secret_access_key, aws.session_token, region, url],
+    )
+    return con
+
+
+def _announce_size(con: duckdb.DuckDBPyConnection, full_name: str, url: str) -> None:
+    """Tell the user how much the table holds on storage, before any data is read."""
     rows = con.execute("SELECT data_file FROM delta_list_files(?)", [url]).fetchall()
     files = [row[0] for row in rows]
-    if not files:
-        return 0, 0
-    total = con.execute("SELECT sum(size) FROM read_blob(?)", [files]).fetchall()[0][0]
-    return len(files), int(total)
+    size = 0
+    if files:
+        size = int(con.execute("SELECT sum(size) FROM read_blob(?)", [files]).fetchall()[0][0])
+    print(
+        f"{full_name}: {len(files)} Parquet files, {_human(size)} on storage "
+        "(whole table; a slice reads less). Fetching...",
+        file=sys.stderr,
+        flush=True,
+    )
 
 
-def _scan(select: str) -> str:
-    return f"{select} FROM delta_scan(?)"
+def _select(
+    con: duckdb.DuckDBPyConnection,
+    url: str,
+    columns: Sequence[str],
+    where: str | None,
+    limit: int | None,
+) -> str:
+    """The query for the logical table: declared columns, bookkeeping rows out, then the slice."""
+    rows = con.execute("DESCRIBE SELECT * FROM delta_scan(?)", [url]).fetchall()
+    physical = {row[0] for row in rows}
+    predicates = [f for col, f in _BOOKKEEPING_FILTERS.items() if col in physical]
+    if where:
+        predicates.append(f"({where})")
+    query = f"SELECT {', '.join(_quote(c) for c in columns)} FROM delta_scan(?)"
+    if predicates:
+        query += f" WHERE {' AND '.join(predicates)}"
+    if limit is not None:
+        query += f" LIMIT {int(limit)}"
+    return query
+
+
+def _write(con: duckdb.DuckDBPyConnection, query: str, url: str, target: Path) -> Path:
+    """Run `query` into `target` through a unique temporary file, so a failure leaves nothing."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle, partial = tempfile.mkstemp(dir=target.parent, prefix=f"{target.name}.", suffix=".part")
+    os.close(handle)
+    try:
+        con.execute(f"COPY ({query}) TO ? (FORMAT parquet, COMPRESSION zstd)", [url, partial])
+        Path(partial).replace(target)
+    finally:
+        Path(partial).unlink(missing_ok=True)
+    return target
 
 
 def _quote(identifier: str) -> str:
