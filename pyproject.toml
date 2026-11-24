@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "databricks-external-access"
+version = "0.1.0"
+description = "Browse Databricks Unity Catalog and fetch tables to local Parquet files, no Databricks compute needed"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["databricks", "unity-catalog", "delta-lake", "duckdb", "parquet"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "databricks-sdk>=0.169",
+  "duckdb>=2.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0",
+  "pytest-cov>=7.0",
+  "ruff>=0.14",
+  "basedpyright>=1.18",
+  "deltalake>=1.6",
+  "pyarrow>=22",
+]
+# Only for notebooks/tutorial.ipynb: `uv run --group notebook jupyter lab`.
+notebook = [
+  "jupyterlab>=4",
+  "pandas>=2.2",
+  "pyarrow>=22",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/databricks_external_access"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DTZ"]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/databricks_external_access"]
+branch = true
+
+[tool.basedpyright]
+include = ["src", "tests"]
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
