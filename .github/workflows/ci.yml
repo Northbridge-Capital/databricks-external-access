@@ -80,3 +80,17 @@ jobs:
       - run: uv build
       - run: uvx twine check --strict dist/*
       - run: uv run --isolated --no-project --with dist/*.whl python -c "import databricks_external_access"
+
+  # The one check branch protection requires (see the infrastructure repo). It has a stable name
+  # so changing the jobs or the test matrix above never needs an infrastructure change.
+  # `always()` makes it report even when a job failed or was cancelled, and it fails unless
+  # every job succeeded.
+  ci-required:
+    if: always()
+    needs: [lint, test, test-lowest, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every CI job succeeded
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI jobs succeeded"
