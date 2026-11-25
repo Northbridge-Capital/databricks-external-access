@@ -7,6 +7,13 @@ version).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-25
+
+### Added
+
+- Published on PyPI: `pip install databricks-external-access`. There are no code changes since
+  0.1.0.
+
 ## [0.1.0] - 2026-11-24
 
 First release.
