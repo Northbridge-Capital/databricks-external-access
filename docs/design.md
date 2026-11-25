@@ -47,8 +47,9 @@ The goal was the fewest dependencies and the least code.
   profile (separate install and login), personal access tokens and OAuth M2M (secrets).
   The workspace URL is saved to `~/.config/databricks-external-access/host`, only after sign-in
   succeeds, and `DATABRICKS_HOST` overrides it.
-- **Install: git tag now, PyPI next.** A pinned `@vX.Y.Z` needs no registry or credentials.
-  *Rejected:* GitHub Packages (it has no Python registry).
+- **Install: PyPI.** Published by the release workflow through trusted publishing (GitHub's OIDC
+  identity, no stored token); every release is also a git tag and a GitHub Release with the wheel
+  and sdist attached. *Rejected:* GitHub Packages (it has no Python registry).
 - **Import name `databricks_external_access`.** It avoids the `databricks` namespace, which
   `databricks-sdk` owns (`databricks.sdk`).
 - **One error hierarchy.** Callers can catch `Error`, or a subclass to react to one case (for

@@ -47,7 +47,7 @@ as Parquet, without Databricks compute and without shared secrets.
   its `delta` and `httpfs` extensions into `~/.duckdb`). A browser is needed to sign in.
 - **Repository rules** (managed outside this repo): a code owner must approve every pull
   request, merges are squash-only, and tags matching `v*` are protected. Releases are tags on
-  `main` and distribution is from git tags for now, PyPI later (see CONTRIBUTING.md).
+  `main`, published to PyPI and as a GitHub Release (see CONTRIBUTING.md).
 
 ## Out of scope
 

@@ -32,15 +32,15 @@ New here? Open the
 
 **Status: alpha (`0.x`).** The API may change between minor versions; see the
 [changelog](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/CHANGELOG.md).
-It is installed from git tags for now; publishing to PyPI is planned.
+Available on [PyPI](https://pypi.org/project/databricks-external-access/).
 
 ## Setup
 
-1. Install a pinned release (see the repository's Releases page for the latest tag):
+1. Install it from PyPI with your package manager:
 
    ```bash
-   uv add "databricks-external-access @ git+https://github.com/Northbridge-Capital/databricks-external-access@v0.1.0"
-   # or: pip install "databricks-external-access @ git+https://github.com/Northbridge-Capital/databricks-external-access@v0.1.0"
+   uv add databricks-external-access
+   # or: pip install databricks-external-access
    ```
 
 2. Run `dbx.login("https://<your-workspace>.cloud.databricks.com")` once. A browser opens to

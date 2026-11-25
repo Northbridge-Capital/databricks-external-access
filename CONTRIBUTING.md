@@ -75,24 +75,26 @@ reuse a version.
    ```
 
 4. The `Release` workflow checks that the tag is on `main` and equals the `pyproject.toml`
-   version, builds the package, publishes a GitHub Release (that version's `CHANGELOG.md` section
-   as the notes, wheel and sdist attached; it fails if the changelog has no section for the
-   version), and publishes to PyPI.
+   version, builds the package, and publishes a GitHub Release (that version's `CHANGELOG.md`
+   section as the notes, wheel and sdist attached; it fails if the changelog has no section for
+   the version). The PyPI upload then waits for a reviewer to approve the `pypi` environment
+   (Actions run > Review deployments).
 5. Consumers bump their pin to the new version.
 
-### Publishing to PyPI
+### How PyPI publishing is configured
 
-The `Release` workflow already publishes to PyPI on a tag, using PyPI **trusted publishing**
-(GitHub's OIDC identity), so no token or secret is stored anywhere. It needs these one-time
-settings first, so **do not push a release tag until they exist** (the publish job would fail):
+The `Release` workflow publishes with PyPI **trusted publishing** (GitHub's OIDC identity), so no
+token or secret is stored anywhere. It relies on two settings outside this repository's code:
 
-1. A PyPI project owner (with 2FA) adds a **pending trusted publisher** at
-   <https://pypi.org/manage/account/publishing/>: owner `Northbridge-Capital`, repository
-   `databricks-external-access`, workflow `release.yml`, environment `pypi`. Do the same on
-   <https://test.pypi.org> to use the `testpypi` dry run. The first publish creates the project.
-2. A GitHub environment named `pypi` on this repository, managed in the infrastructure
-   repo's Terraform (ideally with a required reviewer, so each publish needs one approval).
+- A trusted publisher on the PyPI project: owner `Northbridge-Capital`, repository
+  `databricks-external-access`, workflow `release.yml`, environment `pypi`.
+- A GitHub environment named `pypi` on this repository (managed in the infrastructure repo's
+  Terraform) with a required reviewer, limited to `main` and `v*` tags.
 
-PyPI files are immutable: a version can be uploaded exactly once, so a release that fails
-after upload needs a new version. Once published, the README's install command can change to
-`pip install databricks-external-access`.
+The `testpypi` dry run uploads to test.pypi.org, which is a separate site with separate accounts;
+it needs its own trusted publisher with the same values (not set up yet).
+
+PyPI files are immutable: a version can be uploaded exactly once. If the publish step fails
+before uploading (for example a misconfigured publisher), fix the setting and re-run only the
+failed job; no new version is needed. If a bad release does get uploaded, yank it and cut a new
+version.
