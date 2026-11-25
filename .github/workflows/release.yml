@@ -1,22 +1,26 @@
 name: Release
 
-# Pushing a tag `vX.Y.Z` from main publishes a GitHub Release (see CONTRIBUTING.md).
-# Run it by hand (Actions > Release > Run workflow) for a dry run: the same checks and build,
-# without publishing anything. Do that before tagging, because release tags cannot be undone.
+# Pushing a tag `vX.Y.Z` from main builds the package, publishes a GitHub Release, and publishes
+# to PyPI (see CONTRIBUTING.md). Run it by hand (Actions > Release > Run workflow) for a dry run:
+# the same checks and build, publishing nothing. Tick `testpypi` to also upload the build to
+# TestPyPI. Do a dry run before tagging, because release tags cannot be undone.
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      testpypi:
+        description: Also upload the build to TestPyPI (once per version; files are immutable)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # create the GitHub Release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -52,8 +56,51 @@ jobs:
       - run: uv build
       - run: uvx twine check --strict dist/*
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: |
+            dist/
+            notes.md
+          if-no-files-found: error
+
+  github-release:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub Release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+
       - name: Create the release
-        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
+        run: >
+          gh release create "$GITHUB_REF_NAME" release/dist/*
+          --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REF_NAME"
+          --notes-file release/notes.md
+
+  # A tag publishes to PyPI; a manual run with `testpypi` ticked publishes to TestPyPI instead.
+  # Authentication is PyPI "trusted publishing" (GitHub's OIDC identity): no token or secret is
+  # stored anywhere. Both indexes are configured with this workflow and the `pypi` environment.
+  publish:
+    needs: build
+    if: github.ref_type == 'tag' || inputs.testpypi
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # trusted publishing
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: release/dist
+          repository-url: ${{ github.ref_type == 'tag' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}

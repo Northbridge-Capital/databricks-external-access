@@ -63,8 +63,9 @@ reuse a version.
    and in `CHANGELOG.md` move the `[Unreleased]` entries under the new version with its date.
    Merge it.
 2. Dry-run the release: Actions > **Release** > Run workflow, on `main`. It performs the same
-   checks and build as a real release but publishes nothing. Fix anything it reports; tags
-   cannot be undone, so do not skip this.
+   checks and build as a real release but publishes nothing (tick `testpypi` to also upload the
+   build to TestPyPI, once per version). Fix anything it reports; tags cannot be undone, so do
+   not skip this.
 3. A maintainer tags the merge commit and pushes the tag:
 
    ```bash
@@ -74,23 +75,24 @@ reuse a version.
    ```
 
 4. The `Release` workflow checks that the tag is on `main` and equals the `pyproject.toml`
-   version, builds the package, and creates the GitHub Release with that version's `CHANGELOG.md` section
-   as the notes and the wheel and sdist attached. It fails if the changelog has no section for
-   the version.
-5. Consumers bump their pin to the new tag.
+   version, builds the package, publishes a GitHub Release (that version's `CHANGELOG.md` section
+   as the notes, wheel and sdist attached; it fails if the changelog has no section for the
+   version), and publishes to PyPI.
+5. Consumers bump their pin to the new version.
 
-### Publishing to PyPI (planned, not wired up yet)
+### Publishing to PyPI
 
-The package is already PyPI-ready: `pyproject.toml` carries full metadata, CI runs
-`twine check --strict`, and the wheel ships `py.typed`. Publishing needs repository settings
-that live in the infrastructure repo's Terraform, so it is a request to that repo, not a
-change here:
+The `Release` workflow already publishes to PyPI on a tag, using PyPI **trusted publishing**
+(GitHub's OIDC identity), so no token or secret is stored anywhere. It needs these one-time
+settings first, so **do not push a release tag until they exist** (the publish job would fail):
 
-1. Register the project name on PyPI and add a **trusted publisher** for this repository,
-   workflow `release.yml`, environment `pypi`. This uses GitHub's OIDC identity, so **no
-   token or secret is stored anywhere**.
-2. Ask for a GitHub environment named `pypi` (ideally with a required reviewer).
-3. Add a publish job to `release.yml` that downloads the built distributions and uploads them
-   with `pypa/gh-action-pypi-publish` and `id-token: write`. Dry-run it against TestPyPI first.
+1. A PyPI project owner (with 2FA) adds a **pending trusted publisher** at
+   <https://pypi.org/manage/account/publishing/>: owner `Northbridge-Capital`, repository
+   `databricks-external-access`, workflow `release.yml`, environment `pypi`. Do the same on
+   <https://test.pypi.org> to use the `testpypi` dry run. The first publish creates the project.
+2. A GitHub environment named `pypi` on this repository, managed in the infrastructure
+   repo's Terraform (ideally with a required reviewer, so each publish needs one approval).
 
-Until then, install from the git tag as described in the README.
+PyPI files are immutable: a version can be uploaded exactly once, so a release that fails
+after upload needs a new version. Once published, the README's install command can change to
+`pip install databricks-external-access`.
