@@ -1,6 +1,9 @@
 # databricks-external-access
 
 [![CI](https://github.com/Northbridge-Capital/databricks-external-access/actions/workflows/ci.yml/badge.svg)](https://github.com/Northbridge-Capital/databricks-external-access/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/databricks-external-access)](https://pypi.org/project/databricks-external-access/)
+[![Python](https://img.shields.io/pypi/pyversions/databricks-external-access)](https://pypi.org/project/databricks-external-access/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/LICENSE)
 
 Browse a Databricks workspace (Unity Catalog) and fetch tables to your own machine as Parquet,
 with no Databricks compute and no secrets. Sign in once through your workspace's SSO.
