@@ -17,7 +17,7 @@ from .errors import AccessDenied, Error, NotFound, NotSignedIn
 # Where `login` remembers the workspace URL.
 SAVED_HOST = "~/.config/databricks-external-access/host"
 # Where the SDK caches the OAuth tokens of the browser sign-in.
-TOKEN_CACHE = "~/.config/databricks-sdk-py/oauth"
+TOKEN_CACHE = "~/.config/databricks-sdk-py/oauth"  # noqa: S105 -- a path, not a credential
 
 
 def login(host: str) -> None:
