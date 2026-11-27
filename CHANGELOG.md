@@ -7,6 +7,11 @@ version).
 
 ## [Unreleased]
 
+### Changed
+
+- CI now lints for common security issues (ruff's `S`/bandit rules), matching the scrutiny a
+  package installed by third parties warrants.
+
 ## [0.1.2] - 2026-11-27
 
 ### Changed

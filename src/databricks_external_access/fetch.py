@@ -162,7 +162,7 @@ def _select(
     predicates = [f for col, f in _BOOKKEEPING_FILTERS.items() if col in physical]
     if where:
         predicates.append(f"({where})")
-    query = f"SELECT {', '.join(_quote(c) for c in columns)} FROM delta_scan(?)"
+    query = f"SELECT {', '.join(_quote(c) for c in columns)} FROM delta_scan(?)"  # noqa: S608 -- runs locally with the caller's own credentials; see fetch()'s where= docstring
     if predicates:
         query += f" WHERE {' AND '.join(predicates)}"
     if limit is not None:
