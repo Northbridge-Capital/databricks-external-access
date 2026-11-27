@@ -7,6 +7,14 @@ version).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-27
+
+No behavior changes.
+
+### Added
+
+- A Code of Conduct, and PyPI, Python-version and license badges in the README.
+
 ### Changed
 
 - Docstrings follow the NumPy convention (parameters, returns, raises, attributes and methods,
