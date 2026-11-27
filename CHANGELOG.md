@@ -7,6 +7,15 @@ version).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-27
+
+### Changed
+
+- The tutorial notebook moved from `notebooks/` to `examples/`.
+- `login()` documents, and tests, that any `https://` workspace URL works, including custom
+  workspace URLs. Plain `http://` URLs are still rejected, because the sign-in sends OAuth tokens
+  to that host.
+
 ## [0.1.1] - 2026-11-25
 
 ### Added

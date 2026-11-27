@@ -21,7 +21,10 @@ TOKEN_CACHE = "~/.config/databricks-sdk-py/oauth"
 
 
 def login(host: str) -> None:
-    """Remember the workspace (e.g. `https://dbc-1234abcd-5678.cloud.databricks.com`) and sign in.
+    """Remember the workspace URL and sign in.
+
+    Any `https://` URL works, including a custom workspace URL (for example
+    `https://dbc-1234abcd-5678.cloud.databricks.com` or `https://data.example.com`).
 
     Run once per machine; later sessions reuse the saved workspace. The environment variable
     `DATABRICKS_HOST` overrides it. The workspace is saved only once sign-in has succeeded,
@@ -41,7 +44,7 @@ def _host() -> str:
     if not host.strip():
         raise Error(
             "No workspace configured. Run databricks_external_access.login("
-            "'https://<your-workspace>.cloud.databricks.com') once, or set DATABRICKS_HOST."
+            "'<your workspace URL>') once, or set DATABRICKS_HOST."
         )
     return _normalize(host)
 

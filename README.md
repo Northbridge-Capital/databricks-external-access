@@ -27,7 +27,7 @@ df = pl.read_parquet(path)
 ```
 
 New here? Open the
-[tutorial notebook](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/notebooks/tutorial.ipynb)
+[tutorial notebook](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/examples/tutorial.ipynb)
 (`uv run --group notebook jupyter lab`).
 
 **Status: alpha (`0.x`).** The API may change between minor versions; see the
@@ -43,7 +43,8 @@ Available on [PyPI](https://pypi.org/project/databricks-external-access/).
    # or: pip install databricks-external-access
    ```
 
-2. Run `dbx.login("https://<your-workspace>.cloud.databricks.com")` once. A browser opens to
+2. Run `dbx.login("<your workspace URL>")` once (any `https://` URL works, including a custom
+   workspace URL). A browser opens to
    sign in through your workspace's SSO; the workspace is remembered and the token is cached and
    refreshed automatically. Scripts and CI can set `DATABRICKS_HOST` instead, which overrides the
    saved workspace.

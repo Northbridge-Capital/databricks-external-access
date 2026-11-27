@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-NOTEBOOK = Path(__file__).parent.parent / "notebooks" / "tutorial.ipynb"
+NOTEBOOK = Path(__file__).parent.parent / "examples" / "tutorial.ipynb"
 
 
 def test_tutorial_notebook_has_no_outputs():

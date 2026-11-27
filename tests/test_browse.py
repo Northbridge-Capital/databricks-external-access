@@ -100,6 +100,25 @@ def test_login_saves_the_workspace_and_signs_in(saved_host: Path, monkeypatch: p
     assert _workspace._host() == "https://dbc-1.cloud.databricks.com"
 
 
+@pytest.mark.parametrize(
+    ("given", "saved"),
+    [
+        ("data.example.com", "https://data.example.com"),
+        ("https://data.example.com/", "https://data.example.com"),
+        ("https://data.example.com:8443", "https://data.example.com:8443"),
+        ("https://example.com/databricks", "https://example.com/databricks"),
+    ],
+)
+def test_custom_workspace_urls_are_accepted(
+    saved_host: Path, monkeypatch: pytest.MonkeyPatch, given: str, saved: str
+):
+    monkeypatch.setattr(_workspace, "WorkspaceClient", lambda host, auth_type: None)
+
+    dc.login(given)
+
+    assert saved_host.read_text() == saved + "\n"
+
+
 @pytest.mark.parametrize("host", ["http://dbc-1.cloud.databricks.com", "ftp://x"])
 def test_workspace_url_must_use_https(saved_host: Path, host: str):
     with pytest.raises(dc.Error, match="https://"):

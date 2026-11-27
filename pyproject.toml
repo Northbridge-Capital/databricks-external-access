@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "databricks-external-access"
-version = "0.1.1"
+version = "0.1.2"
 description = "Browse Databricks Unity Catalog and fetch tables to local Parquet files, no Databricks compute needed"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -44,7 +44,7 @@ dev = [
   "deltalake>=1.6",
   "pyarrow>=22",
 ]
-# Only for notebooks/tutorial.ipynb: `uv run --group notebook jupyter lab`.
+# Only for examples/tutorial.ipynb: `uv run --group notebook jupyter lab`.
 notebook = [
   "jupyterlab>=4",
   "pandas>=2.2",
