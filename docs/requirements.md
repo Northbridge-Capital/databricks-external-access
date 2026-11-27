@@ -31,7 +31,7 @@ as Parquet, without Databricks compute and without shared secrets.
 | N4 | Never print or log credentials. | `test_fetch_writes_the_logical_table` |
 | N5 | The package builds, renders on PyPI and imports from a clean environment; it is typed. | CI `build` (`twine check --strict`) |
 | N6 | 95% or more test coverage; warnings in tests are errors. | CI `test`, `filterwarnings = error` |
-| N7 | Source passes strict type checking; workflows pass `actionlint` and `zizmor`; actions are pinned to commit SHAs; the tutorial notebook is committed without outputs. | CI `lint`, `tests/test_notebook.py` |
+| N7 | Source passes strict type checking; workflows pass `actionlint` and `zizmor`; actions are pinned to commit SHAs; the tutorial notebook is committed without outputs; docstrings follow the NumPy convention in CONTRIBUTING.md. | CI `lint`, `tests/test_notebook.py`, `tests/test_docstrings.py` |
 
 ## Environment and constraints
 

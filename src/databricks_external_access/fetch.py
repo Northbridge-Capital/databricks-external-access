@@ -1,7 +1,7 @@
 """Fetch a table (or a slice of it) to a local Parquet file, without Databricks compute.
 
 How it works: Unity Catalog vends short-lived read credentials plus the table's storage
-path (`temporary-table-credentials`); DuckDB's Delta extension reads that path directly and
+path (``temporary-table-credentials``); DuckDB's Delta extension reads that path directly and
 writes the result as Parquet, which every dataframe framework can load.
 """
 
@@ -56,23 +56,42 @@ def fetch(
     limit: int | None = None,
     dest: Path | str = "data",
 ) -> Path:
-    """Write `catalog.schema.table` to `<dest>/<name>.parquet` and return that path.
+    """Write a table, or a slice of it, to a local Parquet file.
 
-    Prints the table's size on storage to stderr before reading any data.
+    Prints the table's size on storage to stderr before reading any data. The file is
+    ``<dest>/<name>.parquet``, written through a temporary file so a failure leaves nothing
+    behind.
 
-    Args:
-        name: Full table name, `catalog.schema.table`.
-        columns: Columns to keep (default: all).
-        where: DuckDB SQL predicate selecting rows, e.g. `"ticker = 'NVDA'"`. It runs on your
-            machine with your own credentials, so it is not sanitised.
-        limit: Maximum number of rows.
-        dest: Directory to write into; created if missing.
+    Parameters
+    ----------
+    name
+        Full table name, ``catalog.schema.table``.
+    columns
+        Columns to keep. Default: all of the table's declared columns.
+    where
+        DuckDB SQL predicate selecting rows, for example ``ticker = 'NVDA'``. It runs on your
+        machine with your own credentials, so it is not sanitised.
+    limit
+        Maximum number of rows. Default: no limit.
+    dest
+        Directory to write into, created if missing. Default: ``data``.
 
-    Raises:
-        UnsupportedTable: The table cannot be read from outside Databricks.
-        AccessDenied: You lack `SELECT` on the table or `EXTERNAL USE SCHEMA` on its schema.
-        NotFound: The table does not exist, or you cannot see it.
-        NotSignedIn: Databricks rejected your sign-in.
+    Returns
+    -------
+    The path of the Parquet file written.
+
+    Raises
+    ------
+    UnsupportedTable
+        The table cannot be read from outside Databricks.
+    AccessDenied
+        You lack ``SELECT`` on the table or ``EXTERNAL USE SCHEMA`` on its schema.
+    NotFound
+        The table does not exist, or you cannot see it.
+    NotSignedIn
+        Databricks rejected your sign-in.
+    Error
+        No workspace is configured.
     """
     info = table_info(name)
     _require_readable(info)
@@ -86,6 +105,7 @@ def fetch(
 
 
 def _require_readable(info: TableInfo) -> None:
+    """Raise ``UnsupportedTable`` unless the table's kind and format can be read."""
     if info.table_type not in _READABLE_KINDS or info.data_source_format not in _READABLE_FORMATS:
         kind = info.table_type.value if info.table_type else "unknown"
         fmt = info.data_source_format.value if info.data_source_format else "none"
@@ -97,7 +117,7 @@ def _require_readable(info: TableInfo) -> None:
 
 
 def _credentials(info: TableInfo) -> tuple[str, AwsCredentials]:
-    """The table's storage path and short-lived read credentials for it."""
+    """Return the table's storage path and short-lived read credentials."""
     with explain(f"requesting read credentials for {info.full_name}"):
         try:
             api = _workspace.client().temporary_table_credentials
@@ -119,12 +139,13 @@ def _credentials(info: TableInfo) -> tuple[str, AwsCredentials]:
 
 
 def _region(full_name: str) -> str:
+    """Return the metastore's AWS region."""
     with explain(f"reading the metastore region for {full_name}"):
         return str(_workspace.client().metastores.summary().region)
 
 
 def _connect(url: str, aws: AwsCredentials, region: str) -> duckdb.DuckDBPyConnection:
-    """An in-memory DuckDB that can read `url` with the given credentials."""
+    """Open an in-memory DuckDB that can read ``url`` with the given credentials."""
     con = duckdb.connect()
     con.execute("INSTALL delta; LOAD delta; INSTALL httpfs; LOAD httpfs")
     con.execute(
@@ -135,7 +156,7 @@ def _connect(url: str, aws: AwsCredentials, region: str) -> duckdb.DuckDBPyConne
 
 
 def _announce_size(con: duckdb.DuckDBPyConnection, full_name: str, url: str) -> None:
-    """Tell the user how much the table holds on storage, before any data is read."""
+    """Tell the user the table's size on storage before any data is read."""
     rows = con.execute("SELECT data_file FROM delta_list_files(?)", [url]).fetchall()
     files = [row[0] for row in rows]
     size = 0
@@ -156,7 +177,7 @@ def _select(
     where: str | None,
     limit: int | None,
 ) -> str:
-    """The query for the logical table: declared columns, bookkeeping rows out, then the slice."""
+    """Build the query for the logical table, then apply the slice."""
     rows = con.execute("DESCRIBE SELECT * FROM delta_scan(?)", [url]).fetchall()
     physical = {row[0] for row in rows}
     predicates = [f for col, f in _BOOKKEEPING_FILTERS.items() if col in physical]
@@ -171,7 +192,7 @@ def _select(
 
 
 def _write(con: duckdb.DuckDBPyConnection, query: str, url: str, target: Path) -> Path:
-    """Run `query` into `target` through a unique temporary file, so a failure leaves nothing."""
+    """Run ``query`` into ``target`` through a temporary file, so a failure leaves nothing."""
     target.parent.mkdir(parents=True, exist_ok=True)
     handle, partial = tempfile.mkstemp(dir=target.parent, prefix=f"{target.name}.", suffix=".part")
     os.close(handle)
@@ -184,10 +205,12 @@ def _write(con: duckdb.DuckDBPyConnection, query: str, url: str, target: Path) -
 
 
 def _quote(identifier: str) -> str:
+    """Quote an identifier for use in a DuckDB query."""
     return '"' + identifier.replace('"', '""') + '"'
 
 
 def _human(size: int) -> str:
+    """Format a byte count with a binary unit, for example ``51.5 MiB``."""
     value = float(size)
     for unit in ("B", "KiB", "MiB", "GiB"):
         if value < 1024:

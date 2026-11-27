@@ -9,6 +9,8 @@ version).
 
 ### Changed
 
+- Docstrings follow the NumPy convention (parameters, returns, raises, attributes and methods,
+  without types) and are checked in CI.
 - CI now lints for common security issues (ruff's `S`/bandit rules), matching the scrutiny a
   package installed by third parties warrants.
 

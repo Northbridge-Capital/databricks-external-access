@@ -43,6 +43,92 @@ tables.
   `[Unreleased]`) must be correct in the same pull request.
 - **Never print or log credentials.**
 
+## Docstrings
+
+All docstrings in `src/` use the NumPy style. Tests are exempt.
+
+**Public and private.** A name is *public* if the package exports it in `__all__`; everything
+else is *private*: names with a `_` prefix, and the helpers inside the private `_workspace`
+module.
+
+**Private functions and classes** get a one-line docstring in imperative mood, ending with a
+period, within 100 characters, and no sections.
+
+```python
+def _quote(identifier: str) -> str:
+    """Quote an identifier for use in a DuckDB query."""
+```
+
+**Public functions** get a summary line, a blank line, then these sections in this order, each
+omitted when it does not apply:
+
+- **Parameters**: one entry per parameter, in signature order: the name, then an indented
+  description. State the default when it is not obvious.
+- **Returns**: a prose description of the value. Omitted when the function returns `None`.
+- **Raises**: one entry per package error the function documents: the error class name, then
+  when it is raised.
+
+```python
+def fetch(name: str, *, columns: Sequence[str] | None = None) -> Path:
+    """Write a table, or a slice of it, to a local Parquet file.
+
+    Parameters
+    ----------
+    name
+        Full table name, ``catalog.schema.table``.
+    columns
+        Columns to keep. Default: all of the table's declared columns.
+
+    Returns
+    -------
+    The Parquet file written.
+
+    Raises
+    ------
+    AccessDenied
+        You lack ``SELECT`` or ``EXTERNAL USE SCHEMA``.
+    """
+```
+
+**Public classes** get a summary line, then these sections, each omitted when empty (a bare
+exception has only its summary):
+
+- **Attributes**: one entry per field or attribute: the name, then an indented description.
+  Dataclass fields are documented here, not inline.
+- **Methods**: one entry per public method: the name, then an indented one-line description,
+  with no signature. Private methods and dunders are left out. The names must match the class's
+  public methods, in definition order. Each listed method also has its own docstring that
+  follows the function rules above.
+
+```python
+class Entry:
+    """A catalog or schema, named by its full dotted name.
+
+    Attributes
+    ----------
+    name
+        Full dotted name, for example ``dev.silver``.
+    comment
+        Description, if any.
+    """
+```
+
+**Style.**
+
+- **No types in docstrings**: the annotation in the signature is the single source of truth.
+- Function summaries are imperative ("Write a table..."); class summaries are noun phrases
+  ("A catalog or schema..."). Every description ends with a period.
+- Inline code uses double backticks: ``name``.
+- Every module has a docstring: a one-line summary, optionally followed by a short paragraph.
+- A nested function, if one is ever added, gets a one-liner.
+
+**Enforcement.** CI runs `ruff`'s pydocstyle rules with the `numpy` convention (section
+formatting) and `tests/test_docstrings.py` (an AST check, no extra dependency). The test
+verifies that every function and class has a docstring, that private ones are one-liners, that
+public functions list exactly their parameters in order and have `Returns` exactly when they
+return a value, and that public classes list exactly their fields under `Attributes` and their
+public methods under `Methods`.
+
 ## Pull requests
 
 1. Fork the repository (or branch, if you are a maintainer) and branch off `main` using

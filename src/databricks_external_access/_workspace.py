@@ -21,14 +21,22 @@ TOKEN_CACHE = "~/.config/databricks-sdk-py/oauth"  # noqa: S105 -- a path, not a
 
 
 def login(host: str) -> None:
-    """Remember the workspace URL and sign in.
+    """Remember the workspace and sign in.
 
-    Any `https://` URL works, including a custom workspace URL (for example
-    `https://dbc-1234abcd-5678.cloud.databricks.com` or `https://data.example.com`).
+    Run once per machine; later sessions reuse the saved workspace, and the environment
+    variable ``DATABRICKS_HOST`` overrides it. The workspace is saved only once sign-in has
+    succeeded, so a mistyped URL never replaces a working one.
 
-    Run once per machine; later sessions reuse the saved workspace. The environment variable
-    `DATABRICKS_HOST` overrides it. The workspace is saved only once sign-in has succeeded,
-    so a mistyped URL never replaces a working one.
+    Parameters
+    ----------
+    host
+        Workspace URL. Any ``https://`` URL works, including a custom workspace URL such as
+        ``https://data.example.com``; a missing scheme is added.
+
+    Raises
+    ------
+    Error
+        The URL does not use ``https://``.
     """
     host = _normalize(host)
     WorkspaceClient(host=host, auth_type="external-browser")
@@ -39,6 +47,7 @@ def login(host: str) -> None:
 
 
 def _host() -> str:
+    """Return the workspace URL from ``DATABRICKS_HOST`` or the saved one."""
     saved = Path(SAVED_HOST).expanduser()
     host = os.environ.get("DATABRICKS_HOST") or (saved.read_text() if saved.exists() else "")
     if not host.strip():
@@ -50,6 +59,7 @@ def _host() -> str:
 
 
 def _normalize(host: str) -> str:
+    """Return ``host`` as an ``https://`` URL without a trailing slash."""
     host = host.strip().rstrip("/")
     if "://" not in host:
         host = f"https://{host}"
@@ -58,25 +68,24 @@ def _normalize(host: str) -> str:
     return host
 
 
+# Your identity provider (for example Google or Okta SSO) does the authentication. The first call
+# opens a browser; the SDK caches and refreshes the token afterwards. A future Databricks Connect
+# session would take its auth from `client().config`.
 @cache
 def client() -> WorkspaceClient:
-    """Sign in to the configured workspace with the SDK's browser OAuth flow.
-
-    Your identity provider (e.g. Google or Okta SSO) does the authentication. The first
-    call opens a browser; the SDK caches and refreshes the token afterwards. This is also
-    where a future Databricks Connect session would take its auth from (`client().config`).
-    """
+    """Return the cached SDK client, signing in through the browser the first time."""
     return WorkspaceClient(host=_host(), auth_type="external-browser")
 
 
 def table_info(name: str) -> TableInfo:
+    """Look up a table's Unity Catalog info by its full name."""
     with explain(f"looking up {name}"):
         return client().tables.get(name)
 
 
 @contextmanager
 def explain(action: str) -> Generator[None]:
-    """Turn the Databricks failures people actually hit into actionable errors."""
+    """Translate the Databricks failures people actually hit into this package's errors."""
     try:
         yield
     except sdk.Unauthenticated as e:
@@ -99,5 +108,5 @@ def explain(action: str) -> Generator[None]:
 
 
 def _message(error: Exception) -> str:
-    """The server's message without the SDK's appended `Config: host=...` diagnostics."""
+    """Return an SDK error's message without its appended ``Config:`` diagnostics."""
     return str(error).split(" Config:")[0]
