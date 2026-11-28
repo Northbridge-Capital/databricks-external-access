@@ -1,0 +1,128 @@
+"""Sphinx configuration for the documentation."""
+
+import importlib.metadata
+import inspect
+import re
+from collections.abc import Generator, Iterator
+from typing import get_args, get_origin
+
+from sphinx.util.typing import stringify_annotation
+
+project = "databricks-external-access"
+author = "Northbridge Capital"
+copyright = "2026, Northbridge Capital"
+release = importlib.metadata.version("databricks-external-access")
+
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "numpydoc",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    "myst_parser",
+    "sphinx_copybutton",
+]
+
+# Docstrings are NumPy style and carry no types; the signature shows the types.
+numpydoc_show_class_members = False
+numpydoc_class_members_toctree = False
+numpydoc_xref_param_type = False
+autodoc_typehints = "signature"
+autodoc_member_order = "bysource"
+autosummary_generate = True
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+myst_enable_extensions = ["colon_fence"]
+myst_heading_anchors = 3
+exclude_patterns = ["_build"]
+templates_path = ["_templates"]
+
+html_theme = "pydata_sphinx_theme"
+html_title = f"{project} {release}"
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/Northbridge-Capital/databricks-external-access",
+            "icon": "fa-brands fa-github",
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/databricks-external-access/",
+            "icon": "fa-brands fa-python",
+        },
+    ],
+    "show_toc_level": 2,
+    "navigation_with_keys": False,
+    "show_prev_next": False,
+}
+
+# --- Types in the parameter lists -------------------------------------------------------------
+# The docstrings carry no types (the annotation is the single source of truth). This hook adds
+# them to the rendered NumPy sections from the annotations, so the lists read ``name : type``.
+
+
+def _annotations(obj):
+    """Return the annotations of ``obj``, evaluated if possible."""
+    try:
+        return inspect.get_annotations(obj, eval_str=True)
+    except Exception:  # an unresolvable forward reference
+        return inspect.get_annotations(obj)
+
+
+def _text(annotation):
+    """Return an annotation as readable text, without module prefixes."""
+    text = annotation if isinstance(annotation, str) else stringify_annotation(annotation)
+    return re.sub(r"\b(?:[a-z_][a-z0-9_]*\.)+([A-Za-z_][A-Za-z0-9_]*)", r"\1", text)
+
+
+def _add_types(app, what, name, obj, options, lines):
+    """Add the annotated types to the Parameters, Attributes and Returns/Yields sections."""
+    types, returns, yields = {}, None, None
+    if what in {"function", "method"}:
+        hints = _annotations(obj)
+        types = {key: _text(value) for key, value in hints.items() if key != "return"}
+        annotation = hints.get("return")
+        if get_origin(annotation) in {Generator, Iterator}:
+            yields = _text(get_args(annotation)[0])
+        elif annotation is not None and annotation is not type(None):
+            returns = _text(annotation)
+        sections = {"Parameters": types}
+    elif what == "class":
+        types = {key: _text(value) for key, value in _annotations(obj).items()}
+        for key, member in inspect.getmembers(obj, lambda m: isinstance(m, property)):
+            if "return" in _annotations(member.fget):
+                types[key] = _text(_annotations(member.fget)["return"])
+        sections = {"Attributes": types}
+    else:
+        return
+    result, section, index = [], None, 0
+    while index < len(lines):
+        line = lines[index]
+        result.append(line)
+        underlined = (
+            bool(line) and index + 1 < len(lines) and re.fullmatch(r"-{3,}", lines[index + 1])
+        )
+        if underlined:
+            section = line
+            result.append(lines[index + 1])
+            index += 2
+            kind = {"Returns": returns, "Yields": yields}.get(section)
+            if kind:  # a prose-only description becomes ``type`` plus an indented description
+                result.append(kind)
+                while index < len(lines) and not (
+                    lines[index]
+                    and index + 1 < len(lines)
+                    and re.fullmatch(r"-{3,}", lines[index + 1])
+                ):
+                    result.append(("    " + lines[index]) if lines[index] else lines[index])
+                    index += 1
+            continue
+        if section in sections and line and not line.startswith(" ") and line in sections[section]:
+            result[-1] = f"{line} : {sections[section][line]}"
+        index += 1
+    lines[:] = result
+
+
+def setup(app):
+    """Register the hook before numpydoc reads the sections."""
+    app.connect("autodoc-process-docstring", _add_types, priority=400)

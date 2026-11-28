@@ -32,6 +32,7 @@ as Parquet, without Databricks compute and without shared secrets.
 | N5 | The package builds, renders on PyPI and imports from a clean environment; it is typed. | CI `build` (`twine check --strict`) |
 | N6 | 95% or more test coverage; warnings in tests are errors. | CI `test`, `filterwarnings = error` |
 | N7 | Source passes strict type checking; workflows pass `actionlint` and `zizmor`; actions are pinned to commit SHAs; the tutorial notebook is committed without outputs; docstrings follow the NumPy convention in CONTRIBUTING.md. | CI `lint`, `tests/test_notebook.py`, `tests/test_docstrings.py` |
+| N8 | The API reference is generated from the docstrings, builds without warnings, and lists every public name. | CI `docs`, `tests/test_api_reference.py` |
 
 ## Environment and constraints
 

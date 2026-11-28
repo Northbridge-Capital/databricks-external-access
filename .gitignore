@@ -9,3 +9,5 @@ build/
 coverage.xml
 .DS_Store
 data/
+docs/_build/
+docs/generated/

@@ -140,6 +140,21 @@ exactly when they return (or yield) a value, that `Raises` names only package er
 built-in exceptions, and that public classes list exactly their fields and properties under
 `Attributes` and their public methods under `Methods`.
 
+## Documentation
+
+The API reference is generated with [Sphinx](https://www.sphinx-doc.org/) from the docstrings
+and type annotations: `numpydoc` renders the NumPy-style sections in the `pydata-sphinx-theme`,
+and the README, `docs/requirements.md` and `docs/design.md` are included as pages.
+
+- **Preview** with `just docs` (live reload). `just docs-build` builds it the way CI does:
+  warnings are errors.
+- **Adding a public name:** list it in `docs/api.rst` under the right heading.
+  `tests/test_api_reference.py` fails if a name in `__all__` is missing.
+- **Types** are never written in docstrings; `docs/conf.py` adds them to the rendered
+  parameter lists from the annotations.
+- The Sphinx packages live in the separate `docs` dependency group, so they never affect the
+  runtime dependencies.
+
 ## Pull requests
 
 1. Fork the repository (or branch, if you are a maintainer) and branch off `main` using

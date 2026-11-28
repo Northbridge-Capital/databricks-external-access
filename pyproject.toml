@@ -44,6 +44,14 @@ dev = [
   "deltalake>=1.6",
   "pyarrow>=22",
 ]
+docs = [
+    "myst-parser>=5.2.0",
+    "numpydoc>=1.11.0",
+    "pydata-sphinx-theme>=0.24.0",
+    "sphinx>=9.0.4",
+    "sphinx-autobuild>=2025.8.25",
+    "sphinx-copybutton>=0.5.2",
+]
 # Only for examples/tutorial.ipynb: `uv run --group notebook jupyter lab`.
 notebook = [
   "jupyterlab>=4",
