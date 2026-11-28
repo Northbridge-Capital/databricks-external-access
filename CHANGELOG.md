@@ -7,6 +7,20 @@ version).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-28
+
+No code changes.
+
+### Added
+
+- API reference documentation, generated from the docstrings and type annotations, at
+  <https://northbridge-capital.github.io/databricks-external-access/>. It is linked from the PyPI sidebar and the README.
+
+### Fixed
+
+- The README's PyPI and Python-version badges render on the PyPI page again; they now use URLs
+  that bypass a stale cached error.
+
 ## [0.1.3] - 2026-11-27
 
 No behavior changes.

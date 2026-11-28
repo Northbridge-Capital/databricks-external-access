@@ -3,6 +3,7 @@
 [![CI](https://github.com/Northbridge-Capital/databricks-external-access/actions/workflows/ci.yml/badge.svg)](https://github.com/Northbridge-Capital/databricks-external-access/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/databricks-external-access?style=flat)](https://pypi.org/project/databricks-external-access/)
 [![Python](https://img.shields.io/pypi/pyversions/databricks-external-access?style=flat)](https://pypi.org/project/databricks-external-access/)
+[![Docs](https://img.shields.io/badge/docs-latest-blue)](https://northbridge-capital.github.io/databricks-external-access/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/LICENSE)
 
 Browse a Databricks workspace (Unity Catalog) and fetch tables to your own machine as Parquet,
@@ -89,6 +90,8 @@ to do:
 
 ## More
 
+- [Documentation](https://northbridge-capital.github.io/databricks-external-access/): the API reference, generated from the
+  docstrings, plus requirements, design and the changelog.
 - [Requirements](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/docs/requirements.md):
   what it must do, the conditions it works under, what is out of scope, and how each is verified.
 - [Design](https://github.com/Northbridge-Capital/databricks-external-access/blob/main/docs/design.md):
