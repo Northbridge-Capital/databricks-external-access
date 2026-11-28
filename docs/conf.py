@@ -1,5 +1,6 @@
 """Sphinx configuration for the documentation."""
 
+import html
 import importlib.metadata
 import inspect
 import re
@@ -12,6 +13,7 @@ project = "databricks-external-access"
 author = "Northbridge Capital"
 copyright = "2026, Northbridge Capital"
 release = importlib.metadata.version("databricks-external-access")
+summary = importlib.metadata.metadata("databricks-external-access")["Summary"]
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -20,6 +22,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "myst_parser",
+    "sphinxext.opengraph",
     "sphinx_copybutton",
 ]
 
@@ -37,6 +40,10 @@ exclude_patterns = ["_build"]
 templates_path = ["_templates"]
 
 html_theme = "pydata_sphinx_theme"
+# The published address: canonical links, and the URL link previews point at.
+html_baseurl = "https://northbridge-capital.github.io/databricks-external-access/"
+ogp_site_url = html_baseurl
+ogp_enable_meta_description = True
 html_title = f"{project} {release}"
 html_theme_options = {
     "icon_links": [
@@ -123,6 +130,20 @@ def _add_types(app, what, name, obj, options, lines):
     lines[:] = result
 
 
+def _drop_object_base(app, name, obj, options, bases):
+    """Hide the uninformative ``Bases: object`` line."""
+    bases[:] = [base for base in bases if base is not object]
+
+
+def _describe_home(app, pagename, templatename, context, doctree):
+    """Describe the home page by the package summary, not by the README's badge text."""
+    if pagename == "index":
+        app.env.metadata[pagename]["og:description"] = summary
+        context["metatags"] += f'<meta name="description" content="{html.escape(summary)}">\n'
+
+
 def setup(app):
-    """Register the hook before numpydoc reads the sections."""
+    """Register the hooks; the type hook runs before numpydoc reads the sections."""
     app.connect("autodoc-process-docstring", _add_types, priority=400)
+    app.connect("autodoc-process-bases", _drop_object_base)
+    app.connect("html-page-context", _describe_home, priority=400)

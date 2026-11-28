@@ -9,4 +9,6 @@
 api
 requirements
 design
+changelog
+contributing
 ```
