@@ -32,6 +32,8 @@ numpydoc_class_members_toctree = False
 numpydoc_xref_param_type = False
 autodoc_typehints = "signature"
 autodoc_member_order = "bysource"
+# pydantic's own configuration attribute is plumbing, not API.
+autodoc_default_options = {"exclude-members": "model_config"}
 autosummary_generate = True
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 myst_enable_extensions = ["colon_fence"]
@@ -40,12 +42,22 @@ exclude_patterns = ["_build"]
 templates_path = ["_templates"]
 
 html_theme = "pydata_sphinx_theme"
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_favicon = "_static/brand/symbol-tile.svg"
 # The published address: canonical links, and the URL link previews point at.
 html_baseurl = "https://northbridge-capital.github.io/databricks-external-access/"
 ogp_site_url = html_baseurl
 ogp_enable_meta_description = True
+ogp_image = "_static/brand/social-card.png"
+ogp_image_alt = "Northbridge Capital"
 html_title = f"{project} {release}"
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/brand/lockup-on-light.svg",
+        "image_dark": "_static/brand/lockup-on-dark.svg",
+        "alt_text": "Northbridge Capital",
+    },
     "icon_links": [
         {
             "name": "GitHub",
@@ -58,6 +70,8 @@ html_theme_options = {
             "icon": "fa-brands fa-python",
         },
     ],
+    "pygments_light_style": "a11y-high-contrast-light",
+    "pygments_dark_style": "a11y-high-contrast-dark",
     "show_toc_level": 2,
     "navigation_with_keys": False,
     "show_prev_next": False,
@@ -135,9 +149,23 @@ def _drop_object_base(app, name, obj, options, bases):
     bases[:] = [base for base in bases if base is not object]
 
 
-def _describe_home(app, pagename, templatename, context, doctree):
-    """Describe the home page by the package summary, not by the README's badge text."""
-    if pagename == "index":
+def _hide_model_signature(app, what, name, obj, options, signature, return_annotation):
+    """Hide a pydantic model's constructor signature: the Attributes section lists its fields."""
+    if what == "class" and hasattr(obj, "model_fields"):
+        return "", None
+    return None
+
+
+def _head_tags(app, pagename, templatename, context, doctree):
+    """Add the icon links to every page, and describe the home page by the package summary."""
+    pathto = context["pathto"]
+    context["metatags"] = context.get("metatags", "") + (
+        f'<link rel="icon" type="image/png" sizes="32x32" '
+        f'href="{pathto("_static/brand/icon-tile-32.png", 1)}">\n'
+        f'<link rel="apple-touch-icon" sizes="180x180" '
+        f'href="{pathto("_static/brand/icon-tile-180.png", 1)}">\n'
+    )
+    if pagename == "index":  # not the README's badge text
         app.env.metadata[pagename]["og:description"] = summary
         context["metatags"] += f'<meta name="description" content="{html.escape(summary)}">\n'
 
@@ -146,4 +174,5 @@ def setup(app):
     """Register the hooks; the type hook runs before numpydoc reads the sections."""
     app.connect("autodoc-process-docstring", _add_types, priority=400)
     app.connect("autodoc-process-bases", _drop_object_base)
-    app.connect("html-page-context", _describe_home, priority=400)
+    app.connect("autodoc-process-signature", _hide_model_signature)
+    app.connect("html-page-context", _head_tags, priority=400)
