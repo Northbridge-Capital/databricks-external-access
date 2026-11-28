@@ -31,6 +31,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/Northbridge-Capital/databricks-external-access"
+Documentation = "https://northbridge-capital.github.io/databricks-external-access/"
 Source = "https://github.com/Northbridge-Capital/databricks-external-access"
 Issues = "https://github.com/Northbridge-Capital/databricks-external-access/issues"
 Changelog = "https://github.com/Northbridge-Capital/databricks-external-access/blob/main/CHANGELOG.md"
